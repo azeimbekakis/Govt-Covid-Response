@@ -1,0 +1,185 @@
+---
+title: "STAT 3494W"
+author: "Anthony Zeimbekakis"
+date: "11/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
+```
+
+```{r test}
+library(tidyverse)
+library(dplyr)
+library(plyr)
+Data <- read.csv('/Users/anthony/Desktop/School Work/2021-2022/STAT 3494W/Govt-Covid-Response/Data/OxCGRT_latest_combined.csv')
+
+Data <- Data[Data$RegionCode == '',]
+
+Data <- na.omit(Data)
+Data <- Data[Data$Rolling7DayDeaths > 0,]
+
+Data <- Data %>%                            # Add lagged column
+  group_by(CountryCode) %>%
+  dplyr::mutate(lagStringencyIndex = dplyr::lag(StringencyIndex, n = 28, default = NA)) %>% 
+  as.data.frame()
+Data <- Data %>%                            # Add lagged column
+  group_by(CountryCode) %>%
+  dplyr::mutate(lagGovernmentResponseIndex = dplyr::lag(GovernmentResponseIndex, n = 28, default = NA)) %>% 
+  as.data.frame()
+Data <- Data %>%                            # Add lagged column
+  group_by(CountryCode) %>%
+  dplyr::mutate(lagContainmentHealthIndex = dplyr::lag(ContainmentHealthIndex, n = 28, default = NA)) %>% 
+  as.data.frame()
+Data <- Data %>%                            # Add lagged column
+  group_by(CountryCode) %>%
+  dplyr::mutate(lagEconomicSupportIndex = dplyr::lag(EconomicSupportIndex, n = 28, default = NA)) %>% 
+  as.data.frame()
+
+Data$Date <- as.Date(as.character(Data$Date), format = '%Y%m%d')
+Data <- na.omit(Data)
+Data <- Data[Data$Rolling7DayDeaths > 0,]
+```
+
+```{r}
+Brazil <- Data[Data$CountryCode == "BRA",]
+lw <- lowess(Brazil$Rolling7DayDeaths ~ Brazil$Date, f = 0.2)
+plot(lw, main = 'lowess(Brazil)', xlab="Date", ylab="Rolling7DayDeaths", pch = 20)
+plot(Brazil$Rolling7DayDeaths ~ Brazil$Date, main = 'lm(Brazil)', xlab="Date", ylab="Rolling7DayDeaths", pch = 20)
+DEU <- Data[Data$CountryCode == 'DEU',]
+ggplot(DEU) + geom_point(aes(x = Date, y = Rolling7DayDeaths), size = 0.5)
+ggplot(DEU) + geom_point(aes(x = Date, y = StringencyIndex), size = 0.5)
+```
+
+```{r}
+detect_waves <- function(data) {
+  columns <- c("Country", "WaveDate")
+  waves <- data.frame(matrix(nrow = 0, ncol = length(columns)))
+  colnames(waves) <- columns
+  for (country in unique(data$CountryCode)) {
+    if (!(country %in% waves)) {
+      country_data <- data[data$CountryCode == country,]
+      lw <- lowess(country_data$Rolling7DayDeaths ~ country_data$Date, f = 0.2)
+      ending <- nrow(country_data)
+      for (i in 1:ending) {
+        before <- i-45
+        after <- i+45
+        if (before > 0 && after < ending) {
+          if (max(lw$y[before:after]) == lw$y[i]) {
+            waves[nrow(waves) + 1,] = c(country, country_data$Date[i])
+          }
+        }
+      }
+    }
+  }
+  return(waves)
+}
+waves <- detect_waves(Data)
+waves$WaveDate <- as.Date(as.numeric(as.character(waves$WaveDate)), origin ="1970-01-01")
+waves
+
+apply_waves <- function(data, waves) {
+  done <- c()
+  for (country in unique(waves$Country)) {
+    if (!(country %in% done)) {
+      country_waves <- waves[waves$Country == country,]
+      temp <- c()
+      for (wave in country_waves$WaveDate) {
+        before <- wave - 45
+        after <- wave + 45
+        temp <- c(temp, before:after)
+      data <- data[!(data$CountryCode == country & !(data$Date %in% temp)),]
+      done <- c(done, country)
+      }
+    }
+  }
+  return(data)
+}
+Data <- apply_waves(Data, waves)
+
+find_model <- function(data, waves, country) {
+    country_data <- data[data$CountryCode == country,]
+    country_waves <- waves[waves$Country == country,]
+    temp <- c()
+    for (wave in country_waves$WaveDate) {
+      before <- wave - 45
+      after <- wave + 45
+      temp <- c(temp, before:after)
+    }
+    country_data <- country_data[country_data$Date %in% temp,]
+    country_model <- lm(log(Rolling7DayDeaths) ~ EconomicSupportIndex, data = country_data)
+    return(country_model)
+}
+
+find_p_values <- function(data, waves) {
+  columns <- c("Country", "R-Squared")
+  models <- data.frame(matrix(nrow = 0, ncol = length(columns)))
+  colnames(models) <- columns
+  for (country in unique(waves$Country)) {
+    if (!(country %in% models)) {
+      country_model <- find_model(Data, waves, country)
+      models[nrow(models) + 1,] = c(country, summary(country_model)$r.squared)
+    }
+  }
+  return(models)
+}
+economic_index <- find_p_values(Data, waves)
+```
+
+```{r}
+cat('GovernmentResponseIndex', '\n')
+summary(as.numeric(govt_response_index[,2]))
+cat('\n')
+cat('ContainmentHealthIndex', '\n')
+summary(as.numeric(contain_health_index[,2]))
+cat('\n')
+cat('StringencyIndex', '\n')
+summary(as.numeric(stringency_index[,2]))
+cat('\n')
+cat('EconomicIndex', '\n')
+summary(as.numeric(economic_index[,2]))
+cat('\n')
+
+contain_health_index
+```
+
+```{r}
+govt_response_model_all <- lm(log(Rolling7DayDeaths) ~ GovernmentResponseIndex, data = Data)
+summary(govt_response_model_all)
+contain_health_model_all <- lm(log(Rolling7DayDeaths) ~ ContainmentHealthIndex, data = Data)
+summary(contain_health_model_all)
+stringency_model_all <- lm(log(Rolling7DayDeaths) ~ StringencyIndex, data = Data)
+summary(stringency_model_all)
+econ_support_model_all <- lm(log(Rolling7DayDeaths) ~ EconomicSupportIndex, data = Data)
+summary(econ_support_model_all)
+
+par(mfrow = c(2, 2))
+plot(govt_response_model_all)
+```
+
+
+```{r}
+means <- Data
+
+means <- ddply(means, 'Date', numcolwise(mean))
+
+ggplot(means) + geom_point(aes(x = Date, y = StringencyIndex, color = 'StringencyIndex'), size = .5) + geom_point(aes(x = Date, y = GovernmentResponseIndex, color = 'GovernmentResponseIndex'), size = .5) + geom_point(aes(x = Date, y = ContainmentHealthIndex, color = 'ContainmentHealthIndex'), size = .5) + geom_point(aes(x = Date, y = EconomicSupportIndex, color = 'EconomicSupportIndex'), size = .5) + labs(color="Indices",x="xxx",y="yyy") + xlab("Date") + ylab("Mean Value") + scale_color_manual(values = c('darkblue', 'darkred', 'purple', 'darkgreen')) + theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+USA <- Data[Data$CountryCode == 'USA',]
+ggplot(USA) + geom_point(aes(x = Date, y = Rolling7DayDeaths, color = 'USA'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Rolling7DayDeaths") + scale_color_manual(values = c('darkblue'))
+ggplot(USA) + geom_point(aes(x = Date, y = lagGovernmentResponseIndex, color = 'USA'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Overall Government Response Index") + scale_color_manual(values = c('darkblue'))
+
+India <- Data[Data$CountryName == 'India',]
+ggplot(India) + geom_point(aes(x = Date, y = Rolling7DayDeaths, color = 'India'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Rolling7DayDeaths") + scale_color_manual(values = c('darkred'))
+ggplot(India) + geom_point(aes(x = Date, y = lagGovernmentResponseIndex, color = 'India'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Overall Government Response Index") + scale_color_manual(values = c('darkred'))
+
+Brazil <- Data[Data$CountryName == 'Brazil',]
+ggplot(Brazil) + geom_point(aes(x = Date, y = Rolling7DayDeaths, color = 'Brazil'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Rolling7DayDeaths") + scale_color_manual(values = c('purple'))
+ggplot(Brazil) + geom_point(aes(x = Date, y = lagGovernmentResponseIndex, color = 'Brazil'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Overall Government Response Index") + scale_color_manual(values = c('purple'))
+
+UK <- Data[Data$CountryName == 'United Kingdom',]
+ggplot(UK) + geom_point(aes(x = Date, y = Rolling7DayDeaths, color = 'UK'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Rolling7DayDeaths") + scale_color_manual(values = c('darkgreen'))
+ggplot(UK) + geom_point(aes(x = Date, y = lagGovernmentResponseIndex, color = 'UK'), size = .5) + labs(color="Country",x="xxx",y="yyy") + xlab("Date") + ylab("Overall Government Response Index") + scale_color_manual(values = c('darkgreen'))
+```

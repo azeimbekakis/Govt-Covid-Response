@@ -55,27 +55,33 @@ Abstract here.
 \hypertarget{sec:intro}{%
 \section{Introduction}\label{sec:intro}}
 
-Introuction here.
+The Coronavirus disease has been plaguing the world for about a year and a half. There have been over 240 million cases of the virus worldwide, claiming just under 5 million deaths to make it one of the deadliest pandemics in history. The main way to slow the spread of a virus, vaccines, are being distributed quickly in an effort to provide some sense of immunity. However, the vaccines took time to develop and to combat spread in the meantime we needed a government response. The goal of this paper will be to determine what government policies were the most effective in slowing COVID-19’s spread, so that we can use this information in the case that another outbreak occurs.
 
 \hypertarget{sec:litrev}{%
-\section{Problem Under Serial Dependence}\label{sec:litrev}}
+\section{Hypothesis}\label{sec:litrev}}
 
-Problem Under Serial Dependence here.
+I hypothesize that there is a strong link between various policy responses and the rate of COVID-19 cases/deaths. Without vaccines available for much of the first year of the pandemic, the only avenues to slow spread were through government action. It’s estimated that without anti-contagion policies, COVID-19 would have grown exponentially at a rate of 38 percent per day (Hsiang 2020). Therefore, we should test to see the link between government responses and the rate of COVID-19 spread. This hypothesis is backed by similar research, in which it was found that early stage responses helped to reverse the growth rate of deaths (Dergiades 2020).
 
 \hypertarget{sec:data}{%
-\section{Simulation}\label{sec:data}}
+\section{Data}\label{sec:data}}
 
-Simulation here.
+I will be using the Oxford COVID-19 Government Response Tracker (OxCGRT) dataset. Various policy responses have been tracked since January 1, 2020 for over 180 countries, and these policy responses are coded into 23 indicators (Hale 2021). These indicators are placed into 5 groups: containment and closure, economic, health system, vaccination, and miscellaneous. For instance, one containment and closure policy is a record of school closings, which is measured on a scale of 0-3 in terms of how encompassing the policy was. There are also 4 overall indices that aggregate the corresponding data into a value from 1 to 100. Sticking with the containment and closure example, the Stringency Index records the overall strictness of lockdown-esque policies like school closings (Hale 2021). These 4 indices can aid with general analysis on what responses are strongest. As well, the dataset includes confirmed cases, confirmed deaths, and subnational data (ex: US States) which will be helpful in analysis.
+
+Dataset:
+https://github.com/OxCGRT/covid-policy-tracker/tree/master/data
+ 
+Information on Indicators:
+https://github.com/OxCGRT/covid-policy-tracker/blob/master/documentation/codebook.md
 
 \hypertarget{sec:methods}{%
-\section{Real Data Analysis}\label{sec:methods}}
+\section{Methods}\label{sec:methods}}
 
-Real Data Analysis here.
+I plan to use R to analyze the OxCGRT data. I will use the R package tidyverse to plot the data over time as well to see if we can learn anything from visualizations. Each datapoint is a day starting from January 1, 2020, so I may summarize them into larger segments to make the data more manageable. As mentioned above, I will use the indicators to perform analysis on which policies were the most effective in slowing down COVID-19 cases/deaths. Since the cases/deaths information in the OxCGRT dataset is not normalized for population, I may pull in overall population statistics to create deaths per 100,000 or generate the rate at which COVID changes from period-to-period. This should normalize the data across all countries. As far as statistical methods to be applied, multiple linear regression will be a valuable tool to see which variables are significant in predicting COVID-19 deaths. Within indicators as well, I can determine which policies were most effective using cross-validation.
 
 \hypertarget{sec:disc}{%
-\section{Conclusion}\label{sec:disc}}
+\section{Discussion}\label{sec:disc}}
 
-Conclusion here.
+I expect to find that countries who had a stronger policy response to COVID-19 had lower cases and deaths in relation to population. I think the more aggressive that countries were in slowing spread, the more likely that we will see favorable numbers in terms of COVID-19’s spread. In terms of which responses were most effective, I expect containment and closure policies to have the most impact. The least effective I believe will be the economic policies. Although something like income support would have lasting effects on economic struggles, it likely plays very little role in preventing COVID-19 deaths.
 
 Here is an example citation: \citet{Steinskog}
 
